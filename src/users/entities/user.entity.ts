@@ -8,7 +8,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { IsEmail, IsEnum, IsString } from 'class-validator';
 import { CoreEntity } from 'src/common/entities/core.entity';
-import { BeforeInsert, Column, Entity } from 'typeorm';
+import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
 
 //type UserRole = 'clinet' | 'owner' | 'delivery';
 
@@ -29,7 +29,7 @@ export class User extends CoreEntity {
   @IsEmail()
   email: string;
 
-  @Column()
+  @Column({ select: false }) // 1. password을 설정 한 경우에만 포함된다.(save에 전달 될 때, 변경되지 않는 것들은 포함하지 않는다.)
   @Field((type) => String)
   @IsString()
   password: string;
@@ -39,13 +39,21 @@ export class User extends CoreEntity {
   @IsEnum(UserRole)
   role: UserRole;
 
+  @Column({ default: false })
+  @Field((type) => Boolean)
+  verified: boolean;
+
   @BeforeInsert()
+  @BeforeUpdate()
   async hashPassword(): Promise<void> {
-    try {
-      this.password = await bcrypt.hash(this.password, 10);
-    } catch (e) {
-      console.error(e);
-      throw new InternalServerErrorException();
+    if (this.password) {
+      // 2. password을 설정 한 경우에만 hash한다.(save에 전달 된, 객체에 password가 있는 경우만)
+      try {
+        this.password = await bcrypt.hash(this.password, 10);
+      } catch (e) {
+        console.error(e);
+        throw new InternalServerErrorException();
+      }
     }
   }
 
@@ -58,3 +66,6 @@ export class User extends CoreEntity {
     }
   }
 }
+
+@InputType()
+export class UserGql extends User {}
