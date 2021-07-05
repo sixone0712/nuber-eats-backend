@@ -7,7 +7,7 @@ import {
   CreateAccountOutput,
 } from './dtos/create-account.dto';
 import { User } from './entities/user.entity';
-import { UsersService } from './users.service';
+import { UserService } from './users.service';
 import { UseGuards } from '@nestjs/common';
 import { AuthUser } from 'src/auth/auth-user.decorator';
 import { EditProfileOutput, EditProfileInput } from './dtos/edit-profile.dto';
@@ -15,18 +15,18 @@ import { VerifyEmailInput, VerifyEmailOutput } from './dtos/verify-email.dto';
 
 @Resolver((of) => User)
 export class UsersResolver {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly userService: UserService) {}
 
   @Mutation((returns) => CreateAccountOutput)
   async createAccount(
     @Args('input') createAccountInput: CreateAccountInput,
   ): Promise<CreateAccountOutput> {
-    return this.usersService.creaetAccount(createAccountInput);
+    return this.userService.creaetAccount(createAccountInput);
   }
 
   @Mutation((returns) => LoginOutput)
   async login(@Args('input') loginInput: LoginInput): Promise<LoginOutput> {
-    return this.usersService.login(loginInput);
+    return this.userService.login(loginInput);
   }
 
   @Query((returns) => User)
@@ -40,7 +40,7 @@ export class UsersResolver {
   async userProfile(
     @Args() userProfileInput: UserProfileInput,
   ): Promise<UserProfileOutput> {
-    return this.usersService.findById(userProfileInput.userId);
+    return this.userService.findById(userProfileInput.userId);
   }
 
   @Mutation((returns) => EditProfileOutput)
@@ -49,11 +49,11 @@ export class UsersResolver {
     @AuthUser() authUser: User,
     @Args('input') editProfileInput: EditProfileInput,
   ): Promise<EditProfileOutput> {
-    return this.usersService.editProfile(authUser.id, editProfileInput);
+    return this.userService.editProfile(authUser.id, editProfileInput);
   }
 
   @Mutation((returns) => VerifyEmailOutput)
   async verifyEmail(@Args('input') verifyEmailInput: VerifyEmailInput) {
-    return this.usersService.verifyEmail(verifyEmailInput.code);
+    return this.userService.verifyEmail(verifyEmailInput.code);
   }
 }

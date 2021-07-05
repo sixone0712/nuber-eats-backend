@@ -1,3 +1,4 @@
+import { Restaurant } from './../../restaurants/entities/restaurant.entity';
 import { InternalServerErrorException } from '@nestjs/common';
 import {
   Field,
@@ -6,9 +7,16 @@ import {
   registerEnumType,
 } from '@nestjs/graphql';
 import * as bcrypt from 'bcrypt';
-import { IsEmail, IsEnum, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsString } from 'class-validator';
 import { CoreEntity } from 'src/common/entities/core.entity';
-import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
+import {
+  BeforeInsert,
+  BeforeUpdate,
+  Column,
+  Entity,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 
 //type UserRole = 'clinet' | 'owner' | 'delivery';
 
@@ -20,13 +28,14 @@ export enum UserRole {
 
 registerEnumType(UserRole, { name: 'UserRole' });
 
-@InputType({ isAbstract: true })
+@InputType('UserInputType', { isAbstract: true })
 @ObjectType()
 @Entity()
 export class User extends CoreEntity {
-  @Column()
+  @Column({ unique: true })
   @Field((type) => String)
   @IsEmail()
+  @IsString()
   email: string;
 
   @Column({ select: false }) // 1. password을 설정 한 경우에만 포함된다.(save에 전달 될 때, 변경되지 않는 것들은 포함하지 않는다.)
@@ -41,7 +50,13 @@ export class User extends CoreEntity {
 
   @Column({ default: false })
   @Field((type) => Boolean)
+  @IsBoolean()
   verified: boolean;
+
+  @Field((type) => [Restaurant])
+  @OneToMany((type) => Restaurant, (restaurant) => restaurant.owner)
+  @JoinColumn()
+  restaurants: Restaurant[];
 
   @BeforeInsert()
   @BeforeUpdate()

@@ -1,3 +1,4 @@
+import { MailService } from './../mail/mail.service';
 import { VerifyEmailOutput } from './dtos/verify-email.dto';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,12 +15,13 @@ import { User } from './entities/user.entity';
 import { Verification } from './entities/verification.entity';
 
 @Injectable()
-export class UsersService {
+export class UserService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Verification)
     private readonly verifications: Repository<Verification>,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async creaetAccount({
@@ -35,11 +37,12 @@ export class UsersService {
       const user = await this.users.save(
         this.users.create({ email, password, role }),
       );
-      await this.verifications.save(
+      const verification = await this.verifications.save(
         this.verifications.create({
           user,
         }),
       );
+      this.mailService.sendVerificationEmail(user.email, verification.code);
       return { ok: true };
     } catch (error) {
       return { ok: false, error: "Couldn't create account" };
@@ -74,15 +77,16 @@ export class UsersService {
     } catch (error) {
       return {
         ok: false,
-        error,
+        error: `Can't log user in`,
       };
     }
   }
 
   async findById(id: number): Promise<UserProfileOutput> {
     try {
-      const user = await this.users.findOne({ id });
-      if (!user) throw Error();
+      //const user = await this.users.findOne({ id });
+      //if (!user) throw Error();
+      const user = await this.users.findOneOrFail({ id });
       return {
         user,
         ok: true,
@@ -108,10 +112,11 @@ export class UsersService {
       if (email) {
         user.email = email;
         user.verified = false;
-        await this.verifications.save(this.verifications.create({ user }));
-        return {
-          ok: true,
-        };
+        this.verifications.delete({ user: { id: user.id } });
+        const verification = await this.verifications.save(
+          this.verifications.create({ user }),
+        );
+        this.mailService.sendVerificationEmail(user.email, verification.code);
       }
       if (password) user.password = password;
       await this.users.save(user);
@@ -138,10 +143,10 @@ export class UsersService {
         await this.verifications.delete(verifycation.id);
         return { ok: true };
       }
-      throw new Error('Verification not found.');
+      return { ok: false, error: 'Verification not found' };
     } catch (error) {
       console.error(error);
-      return { ok: false, error: 'Verification not found.' };
+      return { ok: false, error: 'Could not verify email' };
     }
   }
 }
